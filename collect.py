@@ -1,5 +1,5 @@
 import carla
-import random
+import  random
 from time import sleep
 
 def connect_to_carla(host='localhost', port=2000, timeout=10.0, retries=5):
@@ -7,7 +7,7 @@ def connect_to_carla(host='localhost', port=2000, timeout=10.0, retries=5):
     client.set_timeout(timeout)
     for i in range(retries):
         try:
-            world = client.load_world('Town07')  # Loading the world directly here
+            world = client.load_world('Town02')  # Loading the world directly here
             return client, world
         except RuntimeError as e:
             if i == retries - 1:
@@ -35,7 +35,7 @@ def set_all_traffic_lights(world, light):
             tl.set_state(carla.TrafficLightState.Green)
         # Trafik ışığının durumunun değişmemesi için dondur
         tl.freeze(True)
-set_all_traffic_lights(world, "Red")
+set_all_traffic_lights(world, "Yellow")
 
 class VehicleManager:
     def __init__(self, vehicle, world):
@@ -52,14 +52,14 @@ class VehicleManager:
         def process_image(image):
             if image.frame % 60 == 0:
                 nearest_light = self.update_traffic_light()
-                if nearest_light and nearest_light.get_location().distance(self.vehicle.get_location()) < 30:
+                if nearest_light and self.vehicle.is_at_traffic_light() and nearest_light.get_location().distance(self.vehicle.get_location()) < 30:
                     traffic_light_color = self.vehicle.get_traffic_light_state()
                     color_folder = {carla.TrafficLightState.Red: 'Red', 
                                     carla.TrafficLightState.Yellow: 'Yellow', 
                                     carla.TrafficLightState.Green: 'Green'}.get(traffic_light_color, 'Unknown')
-                    traffic_light_color="Red"
-                    color_folder="Red"
-                    image.save_to_disk(f'./{color_folder}/{traffic_light_color}_{image.frame}.png')
+                    traffic_light_color="Yellow"
+                    color_folder="Yelllow"
+                    image.save_to_disk(f'./{color_folder}/{traffic_light_color}_{image.frame}_{self.vehicle.id}.png')
         camera.listen(process_image)
 
 def spawn_vehicles(num_vehicles, world, bp_lib, spawn_points):

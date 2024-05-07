@@ -88,6 +88,13 @@ for vehicle in vehicles:
     camera = attach_autopilot_and_camera(vehicle, world)
     record_on_traffic_lights(camera)
 
+def setup_traffic_manager(client, ignore_lights=True):
+    traffic_manager = client.get_trafficmanager()
+    if ignore_lights:
+        traffic_manager.set_global_distance_to_leading_vehicle(2.0)
+        traffic_manager.global_percentage_speed_difference(-30.0)  # Hız limitlerini azaltarak daha güvenli bir sürüş sağlar
+        for vehicle in client.get_world().get_actors().filter('vehicle.*'):
+            traffic_manager.ignore_lights_percentage(vehicle.id, 100)  # Tüm araçlar için trafik ışıklarını görmezden gelme
 
 from time import sleep
 weather_list = [
