@@ -7,7 +7,7 @@ def connect_to_carla(host='localhost', port=2000, timeout=10.0, retries=5):
     client.set_timeout(timeout)
     for i in range(retries):
         try:
-            world = client.load_world('Town02')  # Loading the world directly here
+            world = client.load_world('Town01')  # Loading the world directly here
             return client, world
         except RuntimeError as e:
             if i == retries - 1:
@@ -41,6 +41,12 @@ class VehicleManager:
     def __init__(self, vehicle, world):
         self.vehicle = vehicle
         self.world = world
+        self.camera = None
+        self.image_count = 0  # Fotoğraf sayacı
+
+    def start(self):
+        self.camera = attach_autopilot_and_camera(self.vehicle, self.world)
+        self.record_on_traffic_lights(self.camera)
 
     def update_traffic_light(self):
         lights = self.world.get_actors().filter('traffic.traffic_light')
@@ -48,18 +54,22 @@ class VehicleManager:
         nearest_light = min(lights, key=lambda light: light.get_location().distance(vehicle_location), default=None)
         return nearest_light
 
-    def record_on_traffic_lights(self, camera):
+    def record_on_traffic_lights(self, camera, folder, color):
         def process_image(image):
-            if image.frame % 60 == 0:
+            if self.image_count < 3:  # Yalnızca 3 fotoğraf al
+                
                 nearest_light = self.update_traffic_light()
-                if nearest_light and self.vehicle.is_at_traffic_light() and nearest_light.get_location().distance(self.vehicle.get_location()) < 30:
+                if nearest_light and nearest_light.get_location().distance(self.vehicle.get_location()) < 20:
                     traffic_light_color = self.vehicle.get_traffic_light_state()
                     color_folder = {carla.TrafficLightState.Red: 'Red', 
                                     carla.TrafficLightState.Yellow: 'Yellow', 
                                     carla.TrafficLightState.Green: 'Green'}.get(traffic_light_color, 'Unknown')
-                    traffic_light_color="Yellow"
-                    color_folder="Yellow"
+                    color_folder = folder
+                    traffic_light_color = color
                     image.save_to_disk(f'./{color_folder}/{traffic_light_color}_{image.frame}_{self.vehicle.id}.png')
+                    self.image_count += 1
+            else:
+                camera.stop()  # 2 fotoğraftan sonra kamerayı durdur
         camera.listen(process_image)
 
 def spawn_vehicles(num_vehicles, world, bp_lib, spawn_points):
@@ -88,7 +98,7 @@ def attach_autopilot_and_camera(vehicle, world):
     return camera
 
 spawn_points = world.get_map().get_spawn_points()
-vehicles, sensors = spawn_vehicles(20, world, bp_lib, spawn_points)
+vehicles, sensors = spawn_vehicles(10, world, bp_lib, spawn_points)
 managers = [VehicleManager(vehicle, world) for vehicle in vehicles]
 
 
@@ -105,7 +115,7 @@ setup_traffic_manager(world, ignore_lights=True)
 
 for manager in managers:
     camera = attach_autopilot_and_camera(manager.vehicle, world)
-    manager.record_on_traffic_lights(camera)
+    manager.record_on_traffic_lights(camera, "Yellow1", "Yellow")
 
 
 
